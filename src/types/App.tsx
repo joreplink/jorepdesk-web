@@ -6,7 +6,6 @@ import DashboardPage from "@/pages/admin/DashboardPage";
 import TicketsPage from "@/pages/admin/TicketsPage";
 import TicketDetailPage from "@/pages/admin/TicketDetailPage";
 import { TipoServicioPage, AreasPage } from "@/pages/admin/CatalogosPage";
-import UsuariosPage from "@/pages/admin/UsuariosPage";
 
 const Placeholder = ({ title }: { title: string }) => (
   <div className="flex items-center justify-center h-64">
@@ -28,7 +27,7 @@ export default function App() {
               <Route path="/"                    element={<DashboardPage />} />
               <Route path="/tickets"             element={<TicketsPage />} />
               <Route path="/tickets/:id"         element={<TicketDetailPage />} />
-              <Route path="/usuarios"            element={<UsuariosPage />} />
+              <Route path="/usuarios"            element={<Placeholder title="Usuarios" />} />
               <Route path="/catalogos/servicios" element={<TipoServicioPage />} />
               <Route path="/catalogos/areas"     element={<AreasPage />} />
               <Route path="/reportes"            element={<Placeholder title="Reportes" />} />
