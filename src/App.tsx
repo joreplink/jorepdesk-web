@@ -7,15 +7,9 @@ import TicketsPage from "@/pages/admin/TicketsPage";
 import TicketDetailPage from "@/pages/admin/TicketDetailPage";
 import { TipoServicioPage, AreasPage } from "@/pages/admin/CatalogosPage";
 import UsuariosPage from "@/pages/admin/UsuariosPage";
-
-const Placeholder = ({ title }: { title: string }) => (
-  <div className="flex items-center justify-center h-64">
-    <div className="text-center">
-      <h2 className="text-xl font-semibold text-slate-700">{title}</h2>
-      <p className="text-slate-400 text-sm mt-1">Página en construcción</p>
-    </div>
-  </div>
-);
+import ReportesPage from "@/pages/admin/ReportesPage";
+import MisTicketsPage from "@/pages/agente/MisTicketsPage";
+import MiTicketDetailPage from "@/pages/agente/MiTicketDetailPage";
 
 export default function App() {
   return (
@@ -31,11 +25,11 @@ export default function App() {
               <Route path="/usuarios"            element={<UsuariosPage />} />
               <Route path="/catalogos/servicios" element={<TipoServicioPage />} />
               <Route path="/catalogos/areas"     element={<AreasPage />} />
-              <Route path="/reportes"            element={<Placeholder title="Reportes" />} />
+              <Route path="/reportes"            element={<ReportesPage />} />
             </Route>
             <Route element={<AgenteGuard />}>
-              <Route path="/mis-tickets"         element={<Placeholder title="Mis Tickets" />} />
-              <Route path="/mis-tickets/:id"     element={<Placeholder title="Detalle Ticket" />} />
+              <Route path="/mis-tickets"         element={<MisTicketsPage />} />
+              <Route path="/mis-tickets/:id"     element={<MiTicketDetailPage />} />
             </Route>
           </Route>
         </Route>

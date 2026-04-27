@@ -141,7 +141,7 @@ export default function UsuariosPage() {
                 <SelectValue placeholder="Todos los roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los roles</SelectItem>
+                <SelectItem value="Todos">Todos los roles</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
                 <SelectItem value="agente">Agente</SelectItem>
               </SelectContent>
