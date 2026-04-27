@@ -2,9 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useUsuarios, useCrearUsuario, useUpdateUsuario, useDesactivarUsuario } from "@/hooks/useUsuarios";
+import {
+  useUsuarios, useCrearUsuario, useUpdateUsuario,
+  useDesactivarUsuario, useResetearPassword,
+} from "@/hooks/useUsuarios";
 import type { Usuario } from "@/types";
-import { Plus, Pencil, Trash2, Loader2, Users, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users, Search, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,13 +20,13 @@ import { formatDate } from "@/utils";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 const crearSchema = z.object({
-  nombre:    z.string().min(1, "Requerido"),
-  apellido:  z.string().min(1, "Requerido"),
-  email:     z.string().email("Email inválido"),
-  password:  z.string().min(8, "Mínimo 8 caracteres"),
-  rol:       z.enum(["admin", "agente"]),
-  cargo:     z.string().optional(),
-  telefono:  z.string().optional(),
+  nombre:   z.string().min(1, "Requerido"),
+  apellido: z.string().min(1, "Requerido"),
+  email:    z.string().email("Email inválido"),
+  password: z.string().min(8, "Mínimo 8 caracteres"),
+  rol:      z.enum(["admin", "agente"]),
+  cargo:    z.string().optional(),
+  telefono: z.string().optional(),
 });
 
 const editarSchema = z.object({
@@ -34,8 +37,17 @@ const editarSchema = z.object({
   activo:   z.boolean(),
 });
 
-type CrearForm = z.infer<typeof crearSchema>;
-type EditarForm = z.infer<typeof editarSchema>;
+const resetSchema = z.object({
+  nueva_password:   z.string().min(8, "Mínimo 8 caracteres"),
+  confirmar: z.string().min(1, "Confirma la contraseña"),
+}).refine((d) => d.nueva_password === d.confirmar, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmar"],
+});
+
+type CrearForm   = z.infer<typeof crearSchema>;
+type EditarForm  = z.infer<typeof editarSchema>;
+type ResetForm   = z.infer<typeof resetSchema>;
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({ usuario }: { usuario: Usuario }) {
@@ -56,26 +68,27 @@ export default function UsuariosPage() {
   const crear      = useCrearUsuario();
   const update     = useUpdateUsuario();
   const desactivar = useDesactivarUsuario();
+  const resetear   = useResetearPassword();
 
-  const [modalCrear, setModalCrear]   = useState(false);
-  const [editando, setEditando]       = useState<Usuario | null>(null);
-  const [filtroRol, setFiltroRol]     = useState("");
-  const [busqueda, setBusqueda]       = useState("");
+  const [modalCrear, setModalCrear]         = useState(false);
+  const [editando, setEditando]             = useState<Usuario | null>(null);
+  const [reseteando, setReseteando]         = useState<Usuario | null>(null);
+  const [filtroRol, setFiltroRol]           = useState("");
+  const [busqueda, setBusqueda]             = useState("");
 
-  // Forms
-  const crearForm = useForm<CrearForm>({ resolver: zodResolver(crearSchema) });
+  const crearForm  = useForm<CrearForm>({ resolver: zodResolver(crearSchema) });
   const editarForm = useForm<EditarForm>({ resolver: zodResolver(editarSchema) });
+  const resetForm  = useForm<ResetForm>({ resolver: zodResolver(resetSchema) });
 
-  // Filtros locales
   const filtrados = usuarios.filter((u) => {
     const q = busqueda.toLowerCase();
-    const matchBusqueda = !q ||
+    const matchQ = !q ||
       u.nombre.toLowerCase().includes(q) ||
       u.apellido.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
       (u.cargo ?? "").toLowerCase().includes(q);
     const matchRol = !filtroRol || u.rol === filtroRol;
-    return matchBusqueda && matchRol;
+    return matchQ && matchRol;
   });
 
   const abrirEditar = (u: Usuario) => {
@@ -85,6 +98,11 @@ export default function UsuariosPage() {
     editarForm.setValue("cargo",    u.cargo ?? "");
     editarForm.setValue("telefono", u.telefono ?? "");
     editarForm.setValue("activo",   u.activo);
+  };
+
+  const abrirReset = (u: Usuario) => {
+    setReseteando(u);
+    resetForm.reset();
   };
 
   const onCrear = (data: CrearForm) => {
@@ -102,6 +120,20 @@ export default function UsuariosPage() {
     });
   };
 
+  const onReset = (data: ResetForm) => {
+    if (!reseteando) return;
+    resetear.mutate(
+      { id: reseteando.id, nueva_password: data.nueva_password },
+      {
+        onSuccess: () => {
+          toast.success(`Contraseña de ${reseteando.nombre} reseteada. Infórmale la nueva contraseña.`);
+          setReseteando(null);
+        },
+        onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Error"),
+      }
+    );
+  };
+
   const handleDesactivar = (u: Usuario) => {
     if (!confirm(`¿Desactivar a ${u.nombre} ${u.apellido}?`)) return;
     desactivar.mutate(u.id, {
@@ -116,7 +148,9 @@ export default function UsuariosPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Usuarios</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{filtrados.length} usuario{filtrados.length !== 1 ? "s" : ""}</p>
+          <p className="text-slate-500 text-sm mt-0.5">
+            {filtrados.length} usuario{filtrados.length !== 1 ? "s" : ""}
+          </p>
         </div>
         <Button onClick={() => setModalCrear(true)}>
           <Plus className="mr-2 h-4 w-4" /> Nuevo Usuario
@@ -137,7 +171,7 @@ export default function UsuariosPage() {
               />
             </div>
             <Select value={filtroRol} onValueChange={setFiltroRol}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Todos los roles" />
               </SelectTrigger>
               <SelectContent>
@@ -173,7 +207,9 @@ export default function UsuariosPage() {
                 <thead className="border-b border-slate-100 bg-slate-50">
                   <tr>
                     {["Usuario", "Email", "Rol", "Cargo", "Estado", "Creado", "Acciones"].map((h) => (
-                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -203,15 +239,21 @@ export default function UsuariosPage() {
                       <td className="px-4 py-3 text-xs text-slate-400">{formatDate(u.creado_en)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => abrirEditar(u)}>
+                          <Button size="sm" variant="ghost" onClick={() => abrirEditar(u)}
+                            title="Editar usuario">
                             <Pencil size={14} />
                           </Button>
+                          <Button size="sm" variant="ghost"
+                            className="text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                            onClick={() => abrirReset(u)}
+                            title="Resetear contraseña">
+                            <KeyRound size={14} />
+                          </Button>
                           {u.activo && (
-                            <Button
-                              size="sm" variant="ghost"
+                            <Button size="sm" variant="ghost"
                               className="text-red-500 hover:text-red-700 hover:bg-red-50"
                               onClick={() => handleDesactivar(u)}
-                            >
+                              title="Desactivar usuario">
                               <Trash2 size={14} />
                             </Button>
                           )}
@@ -226,7 +268,7 @@ export default function UsuariosPage() {
         </CardContent>
       </Card>
 
-      {/* Modal Crear */}
+      {/* ── Modal Crear ───────────────────────────────────────────────────── */}
       <Dialog open={modalCrear} onOpenChange={(v) => { if (!v) setModalCrear(false); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -289,7 +331,7 @@ export default function UsuariosPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setModalCrear(false)}>Cancelar</Button>
               <Button type="submit" disabled={crear.isPending}>
-                {crear.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {crear.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Crear Usuario
               </Button>
             </DialogFooter>
@@ -297,7 +339,7 @@ export default function UsuariosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Editar */}
+      {/* ── Modal Editar ──────────────────────────────────────────────────── */}
       <Dialog open={!!editando} onOpenChange={(v) => { if (!v) setEditando(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -326,19 +368,74 @@ export default function UsuariosPage() {
               <Input {...editarForm.register("telefono")} />
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="activo"
-                {...editarForm.register("activo")}
-                className="rounded"
-              />
+              <input type="checkbox" id="activo" {...editarForm.register("activo")} className="rounded" />
               <Label htmlFor="activo">Usuario activo</Label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditando(null)}>Cancelar</Button>
               <Button type="submit" disabled={update.isPending}>
-                {update.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Guardar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal Reset Contraseña ────────────────────────────────────────── */}
+      <Dialog open={!!reseteando} onOpenChange={(v) => { if (!v) setReseteando(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound size={16} className="text-amber-500" />
+              Resetear Contraseña
+            </DialogTitle>
+          </DialogHeader>
+
+          {reseteando && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+              <p className="text-xs text-amber-700">
+                Vas a resetear la contraseña de{" "}
+                <strong>{reseteando.nombre} {reseteando.apellido}</strong>.
+                Deberás informarle la nueva contraseña temporal.
+              </p>
+            </div>
+          )}
+
+          <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4 py-1">
+            <div className="space-y-1.5">
+              <Label>Nueva Contraseña *</Label>
+              <Input
+                type="password"
+                placeholder="Mínimo 8 caracteres"
+                {...resetForm.register("nueva_password")}
+              />
+              {resetForm.formState.errors.nueva_password && (
+                <p className="text-red-500 text-xs">{resetForm.formState.errors.nueva_password.message}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Confirmar Contraseña *</Label>
+              <Input
+                type="password"
+                placeholder="Repite la contraseña"
+                {...resetForm.register("confirmar")}
+              />
+              {resetForm.formState.errors.confirmar && (
+                <p className="text-red-500 text-xs">{resetForm.formState.errors.confirmar.message}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setReseteando(null)}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+                disabled={resetear.isPending}
+              >
+                {resetear.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Resetear
               </Button>
             </DialogFooter>
           </form>

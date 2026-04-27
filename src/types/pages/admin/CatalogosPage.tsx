@@ -6,7 +6,7 @@ import {
   useTipoServicios, useCrearTipoServicio, useUpdateTipoServicio, useDeleteTipoServicio,
   useAreas, useCrearArea, useUpdateArea, useDeleteArea,
 } from "@/hooks/useCatalogos";
-import { TipoServicio, Area } from "@/types";
+import type { TipoServicio, Area } from "@/types";
 import { Plus, Pencil, Trash2, Loader2, FolderOpen, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

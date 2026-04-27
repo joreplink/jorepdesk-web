@@ -40,3 +40,10 @@ export function useDesactivarUsuario() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["usuarios"] }),
   });
 }
+
+export function useResetearPassword() {
+  return useMutation({
+    mutationFn: ({ id, nueva_password }: { id: string; nueva_password: string }) =>
+      usuarioApi.resetearPassword(id, nueva_password),
+  });
+}
